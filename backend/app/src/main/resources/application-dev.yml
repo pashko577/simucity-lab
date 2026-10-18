@@ -1,0 +1,14 @@
+# Solo para desarrollo local con docker/compose.yaml. Estas credenciales no deben usarse fuera de tu máquina.
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:${SIMUCITY_DB_PORT:55432}/simucity
+    username: simucity
+    password: simucity-dev
+
+server:
+  # 8088 y no 8080: en esta máquina el 8080 lo usa WSL. El proxy de Vite apunta aquí (SIMUCITY_API_URL).
+  port: ${SIMUCITY_PORT:8088}
+  servlet:
+    session:
+      cookie:
+        secure: false   # http://localhost no usa HTTPS.

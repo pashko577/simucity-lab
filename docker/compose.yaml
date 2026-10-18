@@ -1,0 +1,22 @@
+# PostgreSQL para desarrollo local.
+# Uso: docker compose -f docker/compose.yaml up -d
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: simucity
+      POSTGRES_USER: simucity
+      POSTGRES_PASSWORD: simucity-dev
+    ports:
+      # Solo accesible desde esta máquina. 55432 para no chocar con un PostgreSQL local en 5432.
+      - "127.0.0.1:${SIMUCITY_DB_PORT:-55432}:5432"
+    volumes:
+      - simucity-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U simucity -d simucity"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  simucity-pgdata:

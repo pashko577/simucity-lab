@@ -1,0 +1,14 @@
+# Finales de línea LF en el repositorio para todos los archivos de texto.
+* text=auto eol=lf
+
+# Scripts de Windows con CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# El wrapper de Maven para Linux/macOS debe tener LF o no se ejecuta.
+mvnw text eol=lf
+
+# Binarios.
+*.png binary
+*.jpg binary
+*.jar binary

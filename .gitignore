@@ -1,0 +1,18 @@
+# Maven
+target/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Entorno
+.env
+.env.*
+
+# Configuración local de Claude Code (las skills de .claude/skills sí se versionan)
+.claude/settings.local.json
