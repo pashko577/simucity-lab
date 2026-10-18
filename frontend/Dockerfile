@@ -2,7 +2,7 @@
 # Imagen del frontend: build de Vite servido por nginx, que además hace de proxy de /api hacia el backend.
 # Contexto de construcción: la carpeta frontend/.
 
-FROM node:24-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /src
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
