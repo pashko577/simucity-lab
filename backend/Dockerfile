@@ -2,7 +2,7 @@
 # Imagen del backend (Spring Boot + motor). Contexto de construcción: la carpeta backend/.
 
 # --- Compilación -----------------------------------------------------------------------------------
-FROM eclipse-temurin:21-jdk-alpine AS build
+FROM eclipse-temurin:25-jdk-alpine AS build
 WORKDIR /src
 
 # Primero solo los pom: las dependencias quedan en caché mientras no cambien.
@@ -18,7 +18,7 @@ COPY app/src app/src
 RUN ./mvnw -q -B -DskipTests package
 
 # --- Ejecución -------------------------------------------------------------------------------------
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:25-jre-alpine
 RUN addgroup -S simucity && adduser -S -G simucity -H simucity
 WORKDIR /app
 COPY --from=build /src/app/target/simucity-app-*.jar /app/app.jar
