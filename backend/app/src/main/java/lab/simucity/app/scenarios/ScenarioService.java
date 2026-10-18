@@ -9,6 +9,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import lab.simucity.app.audit.AuditEventType;
+import lab.simucity.app.audit.AuditLog;
 import lab.simucity.app.projects.ProjectService;
 import lab.simucity.app.scenarios.ScenarioDtos.RunParametersRequest;
 import lab.simucity.app.scenarios.ScenarioDtos.ScenarioRequest;
@@ -32,14 +34,16 @@ public class ScenarioService {
     private final ProjectService projects;
     private final ScenarioCodec codec;
     private final SimulationEngine engine;
+    private final AuditLog audit;
     private final Clock clock;
 
     ScenarioService(SavedScenarioRepository scenarios, ProjectService projects, ScenarioCodec codec,
-            SimulationEngine engine, Clock clock) {
+            SimulationEngine engine, AuditLog audit, Clock clock) {
         this.scenarios = scenarios;
         this.projects = projects;
         this.codec = codec;
         this.engine = engine;
+        this.audit = audit;
         this.clock = clock;
     }
 
@@ -92,6 +96,7 @@ public class ScenarioService {
     @Transactional
     public void delete(UUID ownerId, UUID scenarioId) {
         scenarios.delete(getOwned(ownerId, scenarioId));
+        audit.record(AuditEventType.SCENARIO_DELETED, ownerId, "escenario " + scenarioId);
     }
 
     @Transactional(readOnly = true)

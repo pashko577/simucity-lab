@@ -13,6 +13,10 @@ Thumbs.db
 # Entorno
 .env
 .env.*
+!.env.example
+
+# Copias de seguridad de la base de datos (contienen datos de usuarios)
+backups/
 
 # Configuración local de Claude Code (las skills de .claude/skills sí se versionan)
 .claude/settings.local.json

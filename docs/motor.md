@@ -126,6 +126,10 @@ la animación, las anomalías y las advertencias de validación.
 colas, viajes sin terminar), `HIGHER_IS_BETTER` (viajes completados, flujo) o `NEUTRAL` (descriptivas, como los
 vehículos generados).
 
+`Statistics` ofrece el resumen de una métrica entre semillas (media, desviación típica muestral, mínimo y
+máximo) y el intervalo de confianza del 95 % de una diferencia, **pareado** (mismas semillas) o de **Welch**
+(semillas distintas), con la t de Student. Lo usan los lotes de varias semillas del backend.
+
 Una métrica sin observaciones suficientes tiene valor `null` ("no aplica"). Cada métrica indica cuántas
 observaciones se usaron.
 
@@ -143,6 +147,6 @@ umbral (300 s por defecto). Una cola larga que avanza no es una anomalía: es un
 
 ## Pruebas
 
-57 pruebas en `backend/engine/src/test`, entre ellas todas las mínimas de la sección 16.1 de la
+66 pruebas en `backend/engine/src/test`, entre ellas todas las mínimas de la sección 16.1 de la
 especificación. Valores clave verificados a mano: 30 s de viaje en vía libre, 10,5 s de espera exacta ante un
 semáforo en rojo, y que la capacidad nunca se supera en ningún tick.

@@ -1,4 +1,11 @@
-import type { Assessment, FieldChange, MetricComparison, ProjectRunItem, ScenarioChange } from '../api/types';
+import type {
+  Assessment,
+  BatchListItem,
+  FieldChange,
+  MetricComparison,
+  ProjectRunItem,
+  ScenarioChange,
+} from '../api/types';
 import { mpsToKmh } from '../editor/model';
 
 /** Lógica pura de presentación de una comparación (sin DOM): textos, evaluación y selección de filas. */
@@ -25,7 +32,38 @@ export function assessmentView(assessment: Assessment): AssessmentView {
       return { icon: '·', label: 'Descriptiva', tone: 'neutral' };
     case 'NOT_COMPARABLE':
       return { icon: '–', label: 'No comparable', tone: 'neutral' };
+    case 'INCONCLUSIVE':
+      return { icon: '◆', label: 'No concluyente', tone: 'neutral' };
   }
+}
+
+/** Redondeo simétrico (por magnitud): −1,25 → −1,3, igual que 1,25 → 1,3. Math.round redondea hacia +∞. */
+function round(value: number): number {
+  const magnitude = Math.abs(value);
+  const rounded = magnitude >= 100 ? Math.round(magnitude) : Math.round(magnitude * 10) / 10;
+  return Math.sign(value) * rounded;
+}
+
+function signed(value: number): string {
+  const r = round(value);
+  return `${r < 0 ? '−' : ''}${Math.abs(r).toLocaleString('es')}`;
+}
+
+/** "40,2 ± 1,3 s": media y desviación típica entre semillas. */
+export function formatMeanSd(mean: number | null, sd: number | null, unit: string): string {
+  if (mean === null) {
+    return 'No aplica';
+  }
+  const shown = unit === 'ratio' ? '' : ` ${unit}`;
+  return `${round(mean).toLocaleString('es')} ± ${round(sd ?? 0).toLocaleString('es')}${shown}`;
+}
+
+/** Intervalo de confianza del 95 % de la diferencia: "[−12,9; −9] s". */
+export function formatInterval(low: number | null, high: number | null, unit: string): string {
+  if (low === null || high === null) {
+    return '—';
+  }
+  return `[${signed(low)}; ${signed(high)}]${unit === 'ratio' ? '' : ` ${unit}`}`;
 }
 
 /** "+12,5 %", "−25 %" o "n/a" si la base es 0 (sección 9.3: no dividir por cero). */
@@ -33,7 +71,7 @@ export function formatPercent(percent: number | null): string {
   if (percent === null) {
     return 'n/a';
   }
-  const rounded = Math.round(percent * 10) / 10;
+  const rounded = Math.sign(percent) * (Math.round(Math.abs(percent) * 10) / 10);
   const sign = rounded > 0 ? '+' : rounded < 0 ? '−' : '';
   return `${sign}${Math.abs(rounded).toLocaleString('es')} %`;
 }
@@ -42,7 +80,7 @@ export function formatDifference(difference: number | null, unit: string): strin
   if (difference === null) {
     return '—';
   }
-  const rounded = Math.abs(difference) >= 100 ? Math.round(difference) : Math.round(difference * 10) / 10;
+  const rounded = round(difference);
   const sign = rounded > 0 ? '+' : rounded < 0 ? '−' : '';
   return `${sign}${Math.abs(rounded).toLocaleString('es')} ${unit === 'ratio' ? '' : unit}`.trim();
 }
@@ -150,6 +188,13 @@ export function topSegments(segments: MetricComparison[], limit = 10): SegmentRo
 }
 
 // --- Selección de ejecuciones ----------------------------------------------------------------------
+
+export function batchOptionLabel(batch: BatchListItem): string {
+  const when = new Date(batch.createdAt).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' });
+  const last = batch.baseSeed + batch.size - 1;
+  return `${batch.scenarioName} · ${batch.size} semillas (${batch.baseSeed}–${last}) · `
+    + `${Math.round(batch.durationSeconds / 60)} min · ${when}`;
+}
 
 export function runOptionLabel(run: ProjectRunItem): string {
   const when = new Date(run.finishedAt ?? run.createdAt).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' });

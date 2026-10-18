@@ -17,8 +17,20 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import com.jayway.jsonpath.JsonPath;
 
-/** Base de las pruebas de API: aplicación completa + PostgreSQL real + MockMvc. */
-@SpringBootTest
+/**
+ * Base de las pruebas de API: aplicación completa + PostgreSQL real + MockMvc.
+ *
+ * <p>MockMvc transporta la sesión como objeto ({@code .session(...)}) y no como cookie, así que aquí se usa la
+ * sesión del contenedor en lugar de Spring Session JDBC. Las sesiones persistentes se prueban con HTTP real en
+ * {@code RealHttpSecurityTest}. Los límites por IP se elevan porque todas las pruebas comparten 127.0.0.1;
+ * el límite por cuenta sí está activo y se prueba en {@code LoginThrottleApiTest}.
+ */
+@SpringBootTest(properties = {
+        "spring.autoconfigure.exclude="
+                + "org.springframework.boot.session.jdbc.autoconfigure.JdbcSessionAutoConfiguration,"
+                + "org.springframework.boot.session.autoconfigure.SessionAutoConfiguration",
+        "simucity.security.throttle.max-registrations-per-ip=100000",
+        "simucity.security.throttle.max-failures-per-ip=100000"})
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 public abstract class ApiTestSupport {

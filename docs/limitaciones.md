@@ -59,20 +59,32 @@ fecha; no se borra.
 - **Solución futura:** verificación por correo ("si el email es válido, te llegará un enlace").
 
 ### B2. Sin límite de intentos de login
-- **Estado:** abierta. Se resuelve en la Fase 6.
-- **Impacto:** permite intentar contraseñas por fuerza bruta. BCrypt lo hace lento, pero no lo impide.
-- **Solución:** limitar la frecuencia por IP y por cuenta (sección 13.1, "limitar frecuencia de solicitudes").
+- **Estado:** ✅ resuelta el 2026-10-18 (`LoginThrottle`: por cuenta, por IP y registros por IP, con 429 y
+  `Retry-After`).
 
 ### B3. El token CSRF no se renueva al iniciar sesión
-- **Estado:** abierta, menor.
-- **Qué pasa:** como el login es un endpoint propio (JSON) y no el formulario de Spring Security, no se aplica
-  la renovación automática del token CSRF.
-- **Solución:** renovar el token en `AuthController.login`.
+- **Estado:** ✅ resuelta el 2026-10-18 (el login borra el token; se emite uno nuevo).
 
 ### B4. Sesiones en memoria
-- **Estado:** abierta, aceptada para el MVP.
-- **Impacto:** reiniciar el servidor cierra todas las sesiones, y no se puede escalar a varias instancias.
-- **Solución futura:** Spring Session con PostgreSQL o Redis.
+- **Estado:** ✅ resuelta el 2026-10-18 (Spring Session JDBC en PostgreSQL).
+
+### B10. Límite de intentos en memoria de cada instancia
+- **Estado:** abierta, aceptada para el piloto (una instancia).
+- **Qué pasa:** `LoginThrottle` cuenta los intentos en la memoria del proceso. Con varias instancias detrás de
+  un balanceador, cada una lleva su propia cuenta, y reiniciar borra los contadores.
+- **Solución futura:** guardar los contadores en PostgreSQL o Redis (por ejemplo, con Bucket4j).
+
+### B11. HTTPS fuera del stack
+- **Estado:** abierta, por diseño.
+- **Qué pasa:** `compose.yaml` sirve por HTTP en `127.0.0.1`. Para publicar en Internet hace falta un proxy con
+  certificados (Caddy, documentado en `docs/despliegue.md`) y un dominio.
+
+### B12. Sin análisis de vulnerabilidades de dependencias Java en el CI
+- **Estado:** abierta, menor.
+- **Qué pasa:** el frontend se audita con `npm audit` en cada build. Para Java hay Dependabot (alertas de
+  GitHub), pero no un análisis en el propio CI (OWASP Dependency-Check necesita una clave de la API de NVD).
+- **Solución:** activar las alertas de seguridad de Dependabot en GitHub, o añadir Dependency-Check con una
+  clave de NVD como secreto del repositorio.
 
 ### B6. Ejecuciones atadas a una sola instancia del servidor
 - **Estado:** abierta, aceptada para el MVP (sección 10.6: "en el MVP puede usarse un worker interno").
@@ -136,12 +148,22 @@ fecha; no se borra.
 ## Comparación
 
 ### C1. Una sola semilla por lado
-- **Estado:** abierta. Es el siguiente paso de la Fase 5.
-- **Qué pasa:** se compara una ejecución contra otra. Con llegadas aleatorias, una diferencia pequeña puede
-  deberse al azar de esa semilla. La interfaz lo advierte, pero no lo cuantifica.
-- **Solución (sección 9.2 y 20.4):** lotes de N semillas por escenario (por ejemplo, 5 a 10), con promedio,
-  dispersión e intervalo de confianza por métrica. Requiere revisar el límite de 2 ejecuciones simultáneas por
-  usuario: un lote debería contar como una sola tarea.
+- **Estado:** ✅ resuelta el 2026-10-18: lotes de 2 a 10 semillas, comparación pareada o de Welch e intervalo de
+  confianza del 95 %. Un lote cuenta como una sola tarea.
+
+### C4. Sin corrección por comparaciones múltiples
+- **Estado:** abierta, aceptada.
+- **Qué pasa:** se calcula un intervalo del 95 % para cada una de las ~8 métricas por separado. Mirando muchas
+  métricas a la vez, la probabilidad de que alguna salga "significativa" solo por azar es mayor del 5 %. Además,
+  las métricas están correlacionadas (tiempo de viaje y espera suben juntos).
+- **Mitigación:** el usuario debería decidir antes qué métrica le importa (por ejemplo, el tiempo medio de
+  viaje). Opción futura: corrección de Bonferroni o Holm, o elegir una "métrica principal" del experimento.
+
+### C5. Normalidad supuesta con pocas semillas
+- **Estado:** abierta, aceptada.
+- **Qué pasa:** el intervalo t supone que las diferencias entre semillas se distribuyen aproximadamente normal.
+  Con 2 o 3 semillas, el intervalo es muy ancho (correctamente conservador), pero si la distribución es muy
+  asimétrica puede ser inexacto. Recomendado: 5 semillas o más.
 
 ### C2. Sin animación lado a lado
 - **Estado:** abierta, menor.

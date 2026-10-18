@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 /**
  * Flujo principal de la sección 5.2: crear proyecto → dibujar red → semáforo y demanda → validar →

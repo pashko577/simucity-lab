@@ -19,8 +19,10 @@ import lab.simucity.app.runs.RunDtos.ProjectRunItem;
 import lab.simucity.app.runs.RunDtos.RunResponse;
 import lab.simucity.app.runs.RunDtos.RunSummary;
 import lab.simucity.app.scenarios.SavedScenario;
+import lab.simucity.app.scenarios.ScenarioDefinition;
 import lab.simucity.app.scenarios.ScenarioDtos.RunParametersRequest;
 import lab.simucity.app.scenarios.ScenarioService;
+import lab.simucity.app.shared.BadRequestException;
 import lab.simucity.app.shared.ConflictException;
 import lab.simucity.app.shared.NotFoundException;
 import lab.simucity.app.shared.TooManyRequestsException;
@@ -38,6 +40,7 @@ import tools.jackson.databind.json.JsonMapper;
 public class RunService {
 
     private final SimulationRunRepository runs;
+    private final RunBatchRepository batches;
     private final RunResultsStore results;
     private final RunCancellationRegistry cancellations;
     private final ScenarioService scenarios;
@@ -47,10 +50,11 @@ public class RunService {
     private final JsonMapper json;
     private final Clock clock;
 
-    RunService(SimulationRunRepository runs, RunResultsStore results, RunCancellationRegistry cancellations,
-            ScenarioService scenarios, SimulationEngine engine, RunProperties props, ApplicationEventPublisher events,
-            JsonMapper json, Clock clock) {
+    RunService(SimulationRunRepository runs, RunBatchRepository batches, RunResultsStore results,
+            RunCancellationRegistry cancellations, ScenarioService scenarios, SimulationEngine engine,
+            RunProperties props, ApplicationEventPublisher events, JsonMapper json, Clock clock) {
         this.runs = runs;
+        this.batches = batches;
         this.results = results;
         this.cancellations = cancellations;
         this.scenarios = scenarios;
@@ -69,28 +73,75 @@ public class RunService {
     public SimulationRunRecord create(UUID ownerId, UUID scenarioId, RunParametersRequest request) {
         SavedScenario scenario = scenarios.getOwned(ownerId, scenarioId);
 
-        long active = runs.countByOwnerIdAndStatusIn(ownerId, RunStatus.ACTIVE);
-        if (active >= props.maxActivePerUser()) {
-            throw new TooManyRequestsException("Ya tienes " + active + " ejecuciones en curso; espera a que "
-                    + "terminen o cancela alguna.");
+        requireCapacity(ownerId);
+        long seed = request.seed() != null ? request.seed() : randomSeed();
+        RunParameters params = validatedParameters(scenario, seed, request);
+
+        SimulationRunRecord run = runs.save(newRun(null, scenario, ownerId, params));
+        events.publishEvent(new RunCreated(List.of(run.getId())));
+        return run;
+    }
+
+    /**
+     * Lote de N ejecuciones con semillas consecutivas desde la semilla base. Se valida una vez (solo cambia la
+     * semilla) y se calcula como una sola tarea: sus ejecuciones, una tras otra, en el mismo hilo del pool.
+     */
+    @Transactional
+    public RunBatch createBatch(UUID ownerId, UUID scenarioId, int size, RunParametersRequest request) {
+        if (size < RunBatch.MIN_SIZE || size > RunBatch.MAX_SIZE) {
+            throw new BadRequestException("Un lote debe tener entre " + RunBatch.MIN_SIZE + " y "
+                    + RunBatch.MAX_SIZE + " semillas.");
         }
+        SavedScenario scenario = scenarios.getOwned(ownerId, scenarioId);
+        requireCapacity(ownerId);
+        // Acotada para que baseSeed + size no desborde.
+        long baseSeed = request.seed() != null ? request.seed() : randomSeed() >>> 8;
+        RunParameters first = validatedParameters(scenario, baseSeed, request);
 
-        long seed = request.seed() != null ? request.seed() : ThreadLocalRandom.current().nextLong();
+        RunBatch batch = batches.save(new RunBatch(UUID.randomUUID(), scenario.getId(), ownerId, size, baseSeed,
+                first.durationSeconds(), clock.instant()));
+        List<UUID> runIds = new java.util.ArrayList<>();
+        for (int i = 0; i < size; i++) {
+            RunParameters params = first.withSeed(Math.addExact(baseSeed, i));
+            runIds.add(runs.save(newRun(batch.getId(), scenario, ownerId, params)).getId());
+        }
+        events.publishEvent(new RunCreated(runIds));
+        return batch;
+    }
+
+    private void requireCapacity(UUID ownerId) {
+        long active = runs.countActiveTasks(ownerId, RunStatus.ACTIVE);
+        if (active >= props.maxActivePerUser()) {
+            throw new TooManyRequestsException("Ya tienes " + active + " ejecuciones o lotes en curso; espera a "
+                    + "que terminen o cancela alguno.");
+        }
+    }
+
+    private RunParameters validatedParameters(SavedScenario scenario, long seed, RunParametersRequest request) {
+        ScenarioDefinition definition = scenarios.definitionOf(scenario);
+        Double sampleInterval = request.sampleIntervalSeconds();
+        if (sampleInterval == null && request.durationSeconds() != null) {
+            sampleInterval = SimulationConfig.autoSampleInterval(definition.edges().size(), request.durationSeconds(),
+                    props.maxSampleCells());
+        }
         RunParameters params = SimulationConfig.parameters(seed, request.durationSeconds(), request.dtSeconds(),
-                request.sampleIntervalSeconds(), request.saturationFlowPerLaneVph(), request.stallThresholdSeconds());
-
-        ValidationResult validation = engine.validate(scenarios.definitionOf(scenario).toEngine(), params);
+                sampleInterval, request.saturationFlowPerLaneVph(), request.stallThresholdSeconds());
+        ValidationResult validation = engine.validate(definition.toEngine(), params);
         if (!validation.isValid()) {
             throw new ValidationFailedException("El escenario no se puede ejecutar: tiene errores.",
                     validation.issues());
         }
+        return params;
+    }
 
-        SimulationRunRecord run = runs.save(new SimulationRunRecord(UUID.randomUUID(), scenario.getId(), ownerId,
-                EngineVersion.CURRENT, seed, params.dtSeconds(), params.durationSeconds(),
-                json.writeValueAsString(params), scenario.getSchemaVersion(), scenario.getDefinitionJson(),
-                clock.instant()));
-        events.publishEvent(new RunCreated(run.getId()));
-        return run;
+    private SimulationRunRecord newRun(UUID batchId, SavedScenario scenario, UUID ownerId, RunParameters params) {
+        return new SimulationRunRecord(UUID.randomUUID(), batchId, scenario.getId(), ownerId, EngineVersion.CURRENT,
+                params.seed(), params.dtSeconds(), params.durationSeconds(), json.writeValueAsString(params),
+                scenario.getSchemaVersion(), scenario.getDefinitionJson(), clock.instant());
+    }
+
+    private static long randomSeed() {
+        return ThreadLocalRandom.current().nextLong();
     }
 
     @Transactional(readOnly = true)

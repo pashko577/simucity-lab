@@ -40,6 +40,10 @@ Módulos de dominio del backend: `Identity`, `Projects`, `Network`, `Scenarios`,
 
 ## Comandos
 
+Aplicación completa en Docker (db + backend + nginx): `cp .env.example .env` (definir `DB_PASSWORD`) y
+`docker compose up -d --build` → http://localhost:8081. Copias de seguridad: `scripts/backup.sh` y
+`scripts/restore.sh --check <archivo>`. Ver `docs/despliegue.md`.
+
 Maven no está instalado globalmente: usar siempre el wrapper desde `backend/`.
 
 ```bash
@@ -53,6 +57,7 @@ cd frontend
 npm run dev                 # http://localhost:5173, proxy /api → :8088
 npm test && npm run typecheck
 npm run e2e                 # Playwright: navegador real contra backend + Vite (requiere Docker y el jar construido)
+E2E_BASE_URL=http://localhost:8081 npm run e2e   # contra el stack de Docker (nginx + CSP real)
 ```
 
 El código se compila con `--release 21` (Java 21 LTS), aunque el JDK local sea más nuevo. No usar APIs posteriores a Java 21.

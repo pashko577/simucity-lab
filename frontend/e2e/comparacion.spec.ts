@@ -1,4 +1,5 @@
-import { expect, type Page, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 /** Llamada a la API con la sesión del navegador y el token CSRF de su cookie. */
 async function api<T>(page: Page, method: string, path: string, data?: unknown): Promise<T> {
@@ -39,6 +40,57 @@ function road(lanes: number, capacity: number) {
     prohibitedMovements: [],
   };
 }
+
+async function batchAndWait(page: Page, scenarioId: string, size: number, seed: number): Promise<string> {
+  const batch = await api<{ id: string }>(page, 'POST', `/scenarios/${scenarioId}/batches`,
+    { size, seed, durationSeconds: 900 });
+  await expect.poll(async () => (await api<{ status: string }>(page, 'GET', `/batches/${batch.id}`)).status,
+    { timeout: 60_000 }).toBe('COMPLETED');
+  return batch.id;
+}
+
+test('lotes de varias semillas: lanzar desde el editor y comparar con intervalo de confianza', async ({ page }) => {
+  const email = `lote-${Date.now()}@simucity.local`;
+  await api(page, 'POST', '/auth/register', { email, password: 'clave-e2e-segura-123' });
+  await api(page, 'POST', '/auth/login', { email, password: 'clave-e2e-segura-123' });
+  const project = await api<{ id: string }>(page, 'POST', '/projects', { name: 'Lotes E2E' });
+  const base = await api<{ id: string }>(page, 'POST', `/projects/${project.id}/scenarios`,
+    { name: 'Actual', definition: road(1, 10) });
+  const wide = await api<{ id: string }>(page, 'POST', `/projects/${project.id}/scenarios`,
+    { name: 'Ampliada', definition: road(2, 20) });
+
+  // A: desde el editor, con "Repeticiones"
+  await page.goto(`/scenarios/${base.id}`);
+  const duration = page.getByLabel(/Duración/);
+  await duration.fill('15');
+  await duration.press('Enter');
+  const repetitions = page.getByLabel(/Repeticiones/);
+  await repetitions.fill('5');
+  await repetitions.press('Enter');
+  await page.getByLabel(/Semilla inicial/).fill('42');
+  await page.getByRole('button', { name: 'Ejecutar' }).click();
+  await expect(page.getByText('Completado', { exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText('Media ± desviación típica entre semillas')).toBeVisible();
+  await expect(page.getByText(/5\/5 ejecuciones · semillas 42–46/)).toBeVisible();
+
+  // B: por la API, mismas semillas
+  const wideBatch = await batchAndWait(page, wide.id, 5, 42);
+
+  await page.getByRole('link', { name: 'Comparar con otro lote' }).click();
+  await expect(page.getByRole('tab', { name: 'Lotes (varias semillas)' })).toHaveAttribute('aria-selected', 'true');
+  const pickB = page.getByLabel('B · Alternativa');
+  await expect(pickB.locator(`option[value="${wideBatch}"]`)).toHaveText(/^Ampliada · 5 semillas \(42–46\)/);
+  await pickB.selectOption(wideBatch);
+
+  await expect(page.getByText('✓ Comparación justa:')).toBeVisible();
+  await expect(page.getByText(/Comparación pareada: 5 semillas/)).toBeVisible();
+  const travel = page.getByRole('row', { name: /Tiempo medio de viaje/ });
+  await expect(travel).toContainText('Mejora');
+  await expect(travel).toContainText(/\[−\d/); // intervalo con extremos negativos
+  await expect(page.getByRole('row', { name: /Vehículos generados/ })).toContainText('Sin cambios');
+
+  await page.screenshot({ path: test.info().outputPath('comparador-lotes.png'), fullPage: true });
+});
 
 test('comparar una calle saturada con la misma calle ampliada', async ({ page }) => {
   const email = `cmp-${Date.now()}@simucity.local`;

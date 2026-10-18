@@ -186,7 +186,7 @@ export interface ProjectRunItem {
 
 // --- Comparación (sección 9) ---
 
-export type Assessment = 'IMPROVED' | 'WORSENED' | 'UNCHANGED' | 'NEUTRAL' | 'NOT_COMPARABLE';
+export type Assessment = 'IMPROVED' | 'WORSENED' | 'UNCHANGED' | 'NEUTRAL' | 'NOT_COMPARABLE' | 'INCONCLUSIVE';
 export type ElementType = 'NODE' | 'EDGE' | 'DEMAND' | 'SIGNAL' | 'TURN';
 export type ChangeKind = 'ADDED' | 'REMOVED' | 'MODIFIED';
 
@@ -240,6 +240,82 @@ export interface ComparisonResult {
   changes: ScenarioChange[];
   network: MetricComparison[];
   segments: MetricComparison[];
+}
+
+// --- Lotes (varias semillas) ---
+
+export type BatchStatus = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'PARTIAL' | 'FAILED' | 'CANCELLED';
+
+export interface MetricSummary {
+  name: string;
+  unit: string;
+  n: number;
+  mean: number | null;
+  standardDeviation: number | null;
+  min: number | null;
+  max: number | null;
+}
+
+export interface Batch {
+  id: string;
+  scenarioId: string;
+  status: BatchStatus;
+  size: number;
+  baseSeed: number;
+  durationSeconds: number;
+  engineVersion: string | null;
+  createdAt: string;
+  runs: { id: string; seed: number; status: RunStatus }[];
+  completedRuns: number;
+  summary: MetricSummary[];
+}
+
+export interface BatchListItem {
+  id: string;
+  scenarioId: string;
+  scenarioName: string;
+  status: BatchStatus;
+  size: number;
+  baseSeed: number;
+  durationSeconds: number;
+  createdAt: string;
+}
+
+export interface BatchRef {
+  id: string;
+  scenarioId: string;
+  scenarioName: string;
+  size: number;
+  completedRuns: number;
+  seeds: number[];
+  durationSeconds: number;
+  engineVersion: string;
+}
+
+export interface StatComparison {
+  name: string;
+  unit: string;
+  n: number;
+  paired: boolean;
+  baseMean: number | null;
+  candidateMean: number | null;
+  baseStandardDeviation: number | null;
+  candidateStandardDeviation: number | null;
+  meanDifference: number | null;
+  ciLow: number | null;
+  ciHigh: number | null;
+  percentChange: number | null;
+  assessment: Assessment;
+}
+
+export interface BatchComparisonResult {
+  base: BatchRef;
+  candidate: BatchRef;
+  fair: boolean;
+  paired: boolean;
+  conditions: Condition[];
+  changes: ScenarioChange[];
+  network: StatComparison[];
 }
 
 /** Muestras compactas: los arreglos siguen el orden de edgeIds. */

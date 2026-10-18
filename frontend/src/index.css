@@ -171,6 +171,8 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px s
 .metrics th { text-align: left; font-weight: normal; color: var(--muted); padding: 0.25rem 0; }
 .metrics td { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
 .metrics tr { border-bottom: 1px solid var(--border); }
+.metrics caption { text-align: left; padding-bottom: 0.25rem; }
+.run-result progress { width: 100%; }
 
 /* Comparador. Series validadas con dataviz/validate_palette (claro sobre #fff, oscuro sobre #1b2027). */
 :root {
@@ -213,6 +215,8 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px s
 .bar.series-1 { fill: var(--series-1); }
 .bar.series-2 { fill: var(--series-2); }
 .bar-label { font-size: 12px; font-weight: 600; fill: var(--muted); }
+.spread line { stroke: var(--text); stroke-width: 1.5; }
+.tabs--inline { max-width: 460px; }
 .bar-value { font-size: 12px; fill: var(--text); font-variant-numeric: tabular-nums; }
 /* Estado: el icono lleva el color reservado y el texto queda en tinta normal (icono + texto, nunca solo color). */
 .status { white-space: nowrap; font-size: 0.88rem; }

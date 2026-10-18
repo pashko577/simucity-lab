@@ -1,0 +1,68 @@
+# SimuCity Lab completo: PostgreSQL + backend + frontend (nginx).
+#
+#   cp .env.example .env      # y define DB_PASSWORD
+#   docker compose up -d --build
+#   → http://localhost:8081
+#
+# Solo el frontend publica un puerto (y por defecto solo en 127.0.0.1). La base de datos y el backend
+# quedan en la red interna de Docker. Para desarrollo local de solo la base de datos: docker/compose.yaml.
+
+name: simucity
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: simucity
+      POSTGRES_USER: simucity
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en el archivo .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U simucity -d simucity"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    networks: [internal]
+
+  backend:
+    build: ./backend
+    environment:
+      SIMUCITY_DB_URL: jdbc:postgresql://db:5432/simucity
+      SIMUCITY_DB_USER: simucity
+      SIMUCITY_DB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en el archivo .env}
+      SIMUCITY_SECURE_COOKIES: ${SECURE_COOKIES:-true}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    networks: [internal]
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8081}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks: [internal]
+
+volumes:
+  pgdata:
+
+networks:
+  internal:

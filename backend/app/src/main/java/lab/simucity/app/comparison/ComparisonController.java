@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
+import lab.simucity.app.comparison.ComparisonDtos.BatchComparisonRequest;
+import lab.simucity.app.comparison.ComparisonDtos.BatchComparisonResponse;
 import lab.simucity.app.comparison.ComparisonDtos.ComparisonRequest;
 import lab.simucity.app.comparison.ComparisonDtos.ComparisonResponse;
 import lab.simucity.app.identity.AppUserPrincipal;
@@ -16,9 +18,18 @@ import lab.simucity.app.identity.AppUserPrincipal;
 class ComparisonController {
 
     private final ComparisonService service;
+    private final BatchComparisonService batchService;
 
-    ComparisonController(ComparisonService service) {
+    ComparisonController(ComparisonService service, BatchComparisonService batchService) {
         this.service = service;
+        this.batchService = batchService;
+    }
+
+    /** Compara dos lotes (varias semillas) con intervalos de confianza. */
+    @PostMapping("/batches")
+    BatchComparisonResponse compareBatches(@AuthenticationPrincipal AppUserPrincipal user,
+            @Valid @RequestBody BatchComparisonRequest body) {
+        return batchService.compare(user.id(), body.baseBatchId(), body.candidateBatchId());
     }
 
     /** POST (sección 13) aunque no guarda nada: el cuerpo identifica las dos ejecuciones a comparar. */

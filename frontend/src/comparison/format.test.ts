@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import type { MetricComparison } from '../api/types';
-import { assessmentView, describeChange, formatDifference, formatPercent, topSegments } from './format';
+import {
+  assessmentView,
+  describeChange,
+  formatDifference,
+  formatInterval,
+  formatMeanSd,
+  formatPercent,
+  topSegments,
+} from './format';
 
 describe('formatPercent y formatDifference', () => {
   it('usa signo, coma decimal y n/a si la base es 0', () => {
@@ -9,6 +17,8 @@ describe('formatPercent y formatDifference', () => {
     expect(formatPercent(12.46)).toBe('+12,5 %');
     expect(formatPercent(0)).toBe('0 %');
     expect(formatPercent(null)).toBe('n/a');
+    expect(formatPercent(-0.25)).toBe('−0,3 %'); // simétrico con +0,25 → +0,3
+    expect(formatDifference(-1.25, 's')).toBe('−1,3 s');
   });
 
   it('diferencia absoluta con unidad', () => {
@@ -23,6 +33,20 @@ describe('assessmentView', () => {
     expect(assessmentView('IMPROVED')).toEqual({ icon: '▲', label: 'Mejora', tone: 'good' });
     expect(assessmentView('WORSENED')).toEqual({ icon: '▼', label: 'Empeora', tone: 'critical' });
     expect(assessmentView('NOT_COMPARABLE').tone).toBe('neutral');
+  });
+});
+
+describe('lotes', () => {
+  it('media ± desviación y el intervalo de confianza con unidades', () => {
+    expect(formatMeanSd(40.24, 1.27, 's')).toBe('40,2 ± 1,3 s');
+    expect(formatMeanSd(null, null, 's')).toBe('No aplica');
+    expect(formatInterval(-12.96, -9.04, 's')).toBe('[−13; −9] s');
+    expect(formatInterval(-1.25, 2.5, 'veh')).toBe('[−1,3; 2,5] veh');
+    expect(formatInterval(null, null, 's')).toBe('—');
+  });
+
+  it('no concluyente es neutral, con su propio icono', () => {
+    expect(assessmentView('INCONCLUSIVE')).toEqual({ icon: '◆', label: 'No concluyente', tone: 'neutral' });
   });
 });
 

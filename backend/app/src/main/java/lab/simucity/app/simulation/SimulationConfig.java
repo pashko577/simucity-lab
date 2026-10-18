@@ -44,6 +44,24 @@ public class SimulationConfig {
         return executor;
     }
 
+    /** Intervalos de muestreo "redondos" que se prueban, del más fino al más grueso. */
+    private static final double[] SAMPLE_INTERVALS = {5, 10, 15, 20, 30, 60, 120, 300, 600};
+
+    /**
+     * El intervalo de muestreo más fino cuyo número de celdas (muestras × calles) cabe en el límite del servidor.
+     * Sin esto, una red grande con una duración larga fallaría con SAMPLES_TOO_MANY y el editor no tiene campo
+     * para corregirlo (lo detectó la prueba de rendimiento).
+     */
+    public static double autoSampleInterval(int edges, double durationSeconds, long maxSampleCells) {
+        for (double interval : SAMPLE_INTERVALS) {
+            long samples = (long) Math.floor(durationSeconds / interval) + 1;
+            if (samples * Math.max(1, edges) <= maxSampleCells) {
+                return interval;
+            }
+        }
+        return SAMPLE_INTERVALS[SAMPLE_INTERVALS.length - 1];
+    }
+
     /** Valores por defecto para los parámetros que el cliente no envía. */
     public static RunParameters parameters(long seed, double durationSeconds, Double dt, Double sampleInterval,
             Double saturationFlow, Double stallThreshold) {

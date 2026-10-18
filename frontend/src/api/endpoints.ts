@@ -1,5 +1,8 @@
 import { api } from './client';
 import type {
+  Batch,
+  BatchComparisonResult,
+  BatchListItem,
   ComparisonResult,
   Metric,
   MetricScope,
@@ -57,7 +60,18 @@ export const runsApi = {
   listInProject: (projectId: string) => api.get<Page<ProjectRunItem>>(`/projects/${projectId}/runs?size=100`),
 };
 
+export const batchesApi = {
+  /** N semillas consecutivas desde `seed` (2..10). */
+  create: (scenarioId: string, size: number, params: RunParametersRequest) =>
+    api.post<Batch>(`/scenarios/${scenarioId}/batches`, { size, ...params }),
+  get: (id: string) => api.get<Batch>(`/batches/${id}`),
+  cancel: (id: string) => api.post<Batch>(`/batches/${id}/cancel`),
+  listInProject: (projectId: string) => api.get<Page<BatchListItem>>(`/projects/${projectId}/batches?size=100`),
+};
+
 export const comparisonsApi = {
   compare: (baseRunId: string, candidateRunId: string) =>
     api.post<ComparisonResult>('/comparisons', { baseRunId, candidateRunId }),
+  compareBatches: (baseBatchId: string, candidateBatchId: string) =>
+    api.post<BatchComparisonResult>('/comparisons/batches', { baseBatchId, candidateBatchId }),
 };

@@ -16,8 +16,13 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+  session:
+    jdbc:
+      initialize-schema: never   # Las tablas las crea Flyway (V4).
 
 server:
+  # Detrás de nginx: la IP real llega en X-Forwarded-For y Tomcat solo la acepta de proxies internos.
+  forward-headers-strategy: native
   error:
     include-stacktrace: never
     include-message: never
@@ -27,7 +32,7 @@ server:
       timeout: 30m
       cookie:
         http-only: true
-        secure: true
+        secure: ${SIMUCITY_SECURE_COOKIES:true}   # false solo si se sirve por http fuera de localhost
         same-site: lax
 
 management:
@@ -51,3 +56,13 @@ simucity:
     timeout: 120s                    # tiempo real máximo de cálculo por ejecución
     max-expected-vehicles: 50000
     max-sample-cells: 300000         # muestras × calles
+  security:
+    throttle:
+      max-failures-per-account: 5    # fallos de login por cuenta en la ventana → bloqueo de la cuenta
+      max-failures-per-ip: 20        # fallos de login por IP en la ventana → bloqueo de la IP
+      failure-window: 15m
+      max-registrations-per-ip: 10
+      registration-window: 1h
+  audit:
+    retention: 180d                  # los eventos de seguridad (con IP) se borran pasado este plazo
+    purge-cron: "0 30 3 * * *"       # todos los días a las 03:30

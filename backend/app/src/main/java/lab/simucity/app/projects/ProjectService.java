@@ -9,6 +9,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import lab.simucity.app.audit.AuditEventType;
+import lab.simucity.app.audit.AuditLog;
 import lab.simucity.app.projects.ProjectDtos.CreateProjectRequest;
 import lab.simucity.app.projects.ProjectDtos.UpdateProjectRequest;
 import lab.simucity.app.shared.NotFoundException;
@@ -21,10 +23,12 @@ import lab.simucity.app.shared.NotFoundException;
 public class ProjectService {
 
     private final ProjectRepository projects;
+    private final AuditLog audit;
     private final Clock clock;
 
-    ProjectService(ProjectRepository projects, Clock clock) {
+    ProjectService(ProjectRepository projects, AuditLog audit, Clock clock) {
         this.projects = projects;
+        this.audit = audit;
         this.clock = clock;
     }
 
@@ -62,7 +66,9 @@ public class ProjectService {
 
     @Transactional
     public void delete(UUID ownerId, UUID projectId) {
-        projects.delete(getOwned(ownerId, projectId));
+        Project project = getOwned(ownerId, projectId);
+        projects.delete(project);
+        audit.record(AuditEventType.PROJECT_DELETED, ownerId, "proyecto " + projectId);
     }
 
     private static String blankToNull(String value) {

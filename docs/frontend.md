@@ -101,6 +101,19 @@ semilla** → comparar.
 - Mejora y empeoramiento usan colores de **estado** reservados (verde y rojo), siempre con icono y texto
   ("▲ Mejora", "▼ Empeora"), nunca solo color. La tabla es la vista accesible de los mismos datos.
 
+### Lotes de varias semillas
+
+- **En el editor**, el campo **"Repeticiones (semillas)"** del panel de ejecución: con 1 es una ejecución normal;
+  con 2 a 10 se lanza un lote con semillas consecutivas desde la "semilla inicial". Se ve el progreso
+  (3/5 ejecuciones), luego la tabla de media ± desviación por métrica, y se anima la primera semilla.
+- **En el comparador**, la pestaña **"Lotes (varias semillas)"** (`?mode=batches`):
+  - El aviso indica si la comparación es **pareada** (mismas semillas) o de medias (Welch).
+  - Los gráficos muestran la media como barra y ± la desviación como una línea fina con topes.
+  - La tabla incluye media ± desviación de A y B, la diferencia media, el **IC 95 %** ("[−134; −86] s") y la
+    evaluación. **"◆ No concluyente"** aparece cuando el intervalo incluye el cero.
+- Los números se redondean **por magnitud** (−1,25 → −1,3, igual que 1,25 → 1,3). `Math.round` de JavaScript
+  redondea hacia +∞ y deformaba los intervalos (lo detectó una prueba).
+
 **Editor:** cambiar los carriles de una calle escala su capacidad en proporción (`setLanes`). Sin eso, "ampliar
 una calle" apenas cambiaba el resultado, porque el espacio seguía limitando el flujo (ver `docs/motor.md`).
 
@@ -155,7 +168,9 @@ npm run e2e          # prueba E2E: levanta backend y Vite si no están en marcha
 | `editor/store.test.ts` (5) | Herramientas: crear nodos, conectar en uno o dos sentidos encadenando, borrar |
 | `editor/PropertiesPanel.test.tsx` (4) | km/h ↔ m/s · valor inválido no se guarda · sentido contrario · semáforo sin calles |
 | `playback/samples.test.ts` (7) | Elegir la muestra por tiempo · posición de vehículos en cola · colores · reloj |
-| `comparison/format.test.ts` (6) | Porcentajes y diferencias en español · evaluación con icono y texto · descripción de cambios con km/h · calles ordenadas por impacto |
+| `comparison/format.test.ts` (8) | Porcentajes y diferencias en español con redondeo simétrico · media ± desviación e IC 95 % · evaluación con icono y texto (incluido "no concluyente") · descripción de cambios con km/h · calles ordenadas por impacto |
+| `comparison/MetricBars.test.tsx` (2) | Rótulos A/B, valores, evaluación y descripción accesible · líneas de dispersión en lotes |
+| `e2e/comparacion.spec.ts`: lotes (1) | **Navegador real:** lote de 5 semillas desde el editor con "Repeticiones" → comparar con otro lote → pareada, "Mejora" con intervalo negativo, vehículos generados sin cambios |
 | `e2e/comparacion.spec.ts` (1) | **Navegador real:** calle saturada frente a calle ampliada → comparación justa, cambios descritos, "Mejora" en el tiempo de viaje; al intercambiar A y B, "Empeora" |
 | `e2e/flujo-completo.spec.ts` (1) | **Navegador real:** crear cuenta → proyecto → escenario → dibujar un cruce → semáforo → demanda → validar → ejecutar → métricas y CSV → animación con línea de tiempo → recargar y comprobar que se guardó |
 

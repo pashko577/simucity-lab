@@ -27,6 +27,10 @@ public class SimulationRunRecord {
     @Column(name = "scenario_id", nullable = false, updatable = false)
     private UUID scenarioId;
 
+    /** Lote al que pertenece, o {@code null} si es una ejecución individual. */
+    @Column(name = "batch_id", updatable = false)
+    private UUID batchId;
+
     /** Copia del dueño del proyecto: autoriza sin recorrer escenario → proyecto, y permite contar activas. */
     @Column(name = "owner_id", nullable = false, updatable = false)
     private UUID ownerId;
@@ -84,7 +88,15 @@ public class SimulationRunRecord {
     SimulationRunRecord(UUID id, UUID scenarioId, UUID ownerId, String engineVersion, long seed, double timeStep,
             double duration, String parametersSnapshot, int scenarioSchemaVersion, String scenarioSnapshot,
             Instant now) {
+        this(id, null, scenarioId, ownerId, engineVersion, seed, timeStep, duration, parametersSnapshot,
+                scenarioSchemaVersion, scenarioSnapshot, now);
+    }
+
+    SimulationRunRecord(UUID id, UUID batchId, UUID scenarioId, UUID ownerId, String engineVersion, long seed,
+            double timeStep, double duration, String parametersSnapshot, int scenarioSchemaVersion,
+            String scenarioSnapshot, Instant now) {
         this.id = id;
+        this.batchId = batchId;
         this.scenarioId = scenarioId;
         this.ownerId = ownerId;
         this.status = RunStatus.PENDING;
@@ -118,6 +130,10 @@ public class SimulationRunRecord {
 
     public UUID getId() {
         return id;
+    }
+
+    public UUID getBatchId() {
+        return batchId;
     }
 
     public UUID getScenarioId() {

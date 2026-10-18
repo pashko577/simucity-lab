@@ -8,6 +8,7 @@ Documentación técnica de lo que está construido. La visión y los requisitos 
 | [motor.md](motor.md) | Motor de simulación: modelo, ciclo por ticks, determinismo, rutas, semáforos, métricas |
 | [arquitectura-backend.md](arquitectura-backend.md) | Aplicación Spring Boot: módulos, seguridad, base de datos, API |
 | [frontend.md](frontend.md) | Editor web: pantallas, React Flow, animación, comparador, cliente de la API, pruebas |
+| [despliegue.md](despliegue.md) | Docker, HTTPS, copias de seguridad, seguridad implementada, rendimiento y CI |
 | [limitaciones.md](limitaciones.md) | Limitaciones conocidas y decisiones pendientes |
 
 ## Estado por fase
@@ -18,9 +19,18 @@ Documentación técnica de lo que está construido. La visión y los requisitos 
 | 2. Motor independiente | ✅ Completa (motor v0.2.0, 54 pruebas) |
 | 3. Editor web | ✅ Editor 2D con React Flow: dibujar la red, semáforos, giros, demanda, validar (43 pruebas + E2E) |
 | 4. Ejecución y resultados | ✅ Ejecuciones asíncronas, métricas explicadas, CSV y animación 2D sobre el lienzo (35 pruebas de API) |
-| 5. Comparación | ✅ Comparador de 2 ejecuciones: condiciones de comparación justa, qué cambió, variación de cada métrica, gráficos y calles más afectadas. Pendiente: varias semillas con promedio y dispersión (C1) |
+| 5. Comparación | ✅ Comparador de ejecuciones y de **lotes de varias semillas** (comparación pareada con intervalo de confianza del 95 %): condiciones justas, qué cambió, variación de cada métrica, gráficos y calles más afectadas |
 | Vista 3D | Pendiente, después de la Fase 5 (sección 17, prioridad 4). La animación ya usa la interfaz `RunRenderer` |
-| 6. Seguridad y despliegue | Parcial: autenticación, CSRF, autorización por recurso, límites de tamaño y de ejecución |
+| 6. Seguridad y despliegue | ✅ Límite de intentos de login, sesiones persistentes, renovación del CSRF, auditoría, Docker con CSP, backups probados, CI y prueba de rendimiento. Falta elegir servidor y dominio para el piloto |
+
+## Probar la aplicación completa (solo Docker)
+
+```bash
+cp .env.example .env        # define DB_PASSWORD
+docker compose up -d --build
+```
+
+Abre http://localhost:8081. Detalles en [despliegue.md](despliegue.md).
 
 ## Desarrollo local
 

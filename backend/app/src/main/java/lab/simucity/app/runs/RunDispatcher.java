@@ -1,6 +1,7 @@
 package lab.simucity.app.runs;
 
 import java.time.Clock;
+import java.util.List;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -19,7 +20,8 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Component
 class RunDispatcher {
 
-    record RunCreated(UUID runId) {
+    /** Una tarea: una ejecución individual, o las N de un lote, que se calculan una tras otra. */
+    record RunCreated(List<UUID> runIds) {
     }
 
     private static final Logger log = LoggerFactory.getLogger(RunDispatcher.class);
@@ -40,10 +42,12 @@ class RunDispatcher {
     @TransactionalEventListener
     void onRunCreated(RunCreated event) {
         try {
-            simulationExecutor.execute(() -> worker.execute(event.runId()));
+            simulationExecutor.execute(() -> event.runIds().forEach(worker::execute));
         } catch (TaskRejectedException queueFull) {
-            runs.failIfPending(event.runId(), RunStatus.PENDING, RunStatus.FAILED, "QUEUE_FULL",
-                    "El servidor está ocupado. Inténtalo de nuevo en unos minutos.", clock.instant());
+            for (UUID runId : event.runIds()) {
+                runs.failIfPending(runId, RunStatus.PENDING, RunStatus.FAILED, "QUEUE_FULL",
+                        "El servidor está ocupado. Inténtalo de nuevo en unos minutos.", clock.instant());
+            }
         }
     }
 

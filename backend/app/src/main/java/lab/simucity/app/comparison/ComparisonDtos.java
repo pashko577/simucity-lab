@@ -44,7 +44,39 @@ public final class ComparisonDtos {
         /** La métrica es descriptiva: cambiar no es mejor ni peor. */
         NEUTRAL,
         /** Falta el valor en alguna de las dos ejecuciones (p. ej. percentil 95 sin observaciones suficientes). */
-        NOT_COMPARABLE
+        NOT_COMPARABLE,
+        /** Solo en lotes: hay diferencia, pero el intervalo de confianza del 95 % incluye el cero (puede ser azar). */
+        INCONCLUSIVE
+    }
+
+    // --- Comparación de lotes (varias semillas) -------------------------------------------------------
+
+    public record BatchComparisonRequest(@NotNull UUID baseBatchId, @NotNull UUID candidateBatchId) {
+    }
+
+    public record BatchRef(UUID id, UUID scenarioId, String scenarioName, int size, int completedRuns,
+            List<Long> seeds, double durationSeconds, String engineVersion) {
+    }
+
+    /**
+     * Diferencia de medias con su intervalo de confianza del 95 %.
+     *
+     * @param n       pares (comparación pareada) o el menor número de ejecuciones (Welch)
+     * @param paired  {@code true} si se compararon semilla a semilla
+     */
+    public record StatComparison(String name, String unit, int n, boolean paired, Double baseMean,
+            Double candidateMean, Double baseStandardDeviation, Double candidateStandardDeviation,
+            Double meanDifference, Double ciLow, Double ciHigh, Double percentChange, Assessment assessment) {
+    }
+
+    public record BatchComparisonResponse(
+            BatchRef base,
+            BatchRef candidate,
+            boolean fair,
+            boolean paired,
+            List<Condition> conditions,
+            List<ScenarioChange> changes,
+            List<StatComparison> network) {
     }
 
     /**

@@ -128,8 +128,15 @@ leerlos.
 ## Seguridad
 
 ### Autenticación
-- **Sesión con cookie** `JSESSIONID`: `HttpOnly`, `SameSite=Lax`, `Secure` en producción y 30 minutos de
-  inactividad.
+- **Sesión con cookie** `SESSION` (Spring Session JDBC): `HttpOnly`, `SameSite=Lax`, `Secure` en producción y
+  30 minutos de inactividad. Las sesiones se guardan en PostgreSQL (tablas `SPRING_SESSION*`, migración V4):
+  sobreviven a reinicios y permiten varias instancias.
+- **Límite de intentos** (`LoginThrottle`): 5 fallos en 15 min bloquean la cuenta, 20 la IP, y 10 registros por
+  hora por IP. Responde 429 con `Retry-After`. Se comprueba antes de verificar la contraseña y se aplica exista
+  o no la cuenta. La ventana es deslizante y en memoria; las claves antiguas se purgan cada 10 min.
+- **Auditoría** (`audit.AuditLog`, tabla `audit_events`): registro, login (éxito, fallo, bloqueo), logout y
+  borrado de proyectos y escenarios, con el ID del usuario y la IP. Nunca se guarda el email tecleado ni la
+  contraseña. Retención de 180 días (`simucity.audit.retention`), con purga diaria.
 - Contraseñas con **BCrypt** mediante `DelegatingPasswordEncoder` (el prefijo `{bcrypt}` permite migrar a
   Argon2 más adelante sin invalidar cuentas). Longitud de 12 a 128 caracteres y máximo 72 bytes, el límite de
   BCrypt: se rechaza en lugar de truncar en silencio.
@@ -146,6 +153,11 @@ leerlos.
   rechaza en la cabecera. Así estaba al principio, y lo detectó la prueba E2E del navegador.
 - `/error` es público. Sin eso, un 403 (por ejemplo, de CSRF) se reenviaba a `/error`, que exigía sesión, y
   el cliente recibía un **401 engañoso** sin cuerpo.
+- **El token se renueva al iniciar sesión** (B3): el login borra la cookie `XSRF-TOKEN` y `csrf.spa()` emite una
+  nueva en la siguiente petición. Un token capturado antes del login deja de valer.
+- Cabeceras de la API: `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'` (solo devuelve
+  JSON), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` y
+  `Cache-Control: no-store`.
 - `CsrfRealHttpTest` lo prueba con servidor y cliente HTTP reales, porque MockMvc sustituye el mecanismo
   CSRF y no puede detectar estos errores.
 
@@ -186,6 +198,31 @@ y `NOT_COMPARABLE` (falta el valor, como un percentil 95 sin observaciones sufic
 `GET /api/v1/projects/{id}/runs` lista las ejecuciones de todo el proyecto con el nombre de su escenario (por
 defecto solo las `COMPLETED`), para elegir qué comparar.
 
+### Lotes de varias semillas (sección 9.2)
+
+Con llegadas aleatorias, una sola ejecución por lado no permite distinguir una mejora real del azar. Un **lote**
+es el mismo escenario ejecutado con N semillas consecutivas (`seed`, `seed + 1`… de 2 a 10).
+
+- `POST /scenarios/{id}/batches {size, durationSeconds, seed?}`: se valida una vez y se crean N ejecuciones
+  normales con `batch_id`. **Un lote cuenta como una sola tarea** en el límite de 2 por usuario
+  (`count(distinct coalesce(batch_id, id))`), y sus ejecuciones se calculan **una tras otra** en el mismo hilo
+  del pool, así que un lote no acapara el servidor.
+- Estado derivado de sus ejecuciones: `PENDING`, `RUNNING`, `COMPLETED`, `PARTIAL` (alguna falló o se canceló;
+  las estadísticas usan solo las completadas), `FAILED` o `CANCELLED`.
+- `GET /batches/{id}` devuelve, por métrica de red, `n`, media, desviación típica, mínimo y máximo.
+
+`POST /comparisons/batches {baseBatchId, candidateBatchId}` (`BatchComparator`, puro):
+- **Mismas semillas en ambos lotes → comparación pareada:** se analiza la diferencia de cada par (semilla 42
+  contra 42…). El azar de las llegadas es el mismo en ambos lados y se cancela, así que se detectan diferencias
+  más pequeñas.
+- **Semillas distintas → Welch** (diferencia de medias con varianzas distintas). La condición `SAME_SEEDS` lo
+  advierte.
+- Intervalo de confianza del 95 % con la t de Student (`engine/metrics/Statistics`, tabla de valores críticos;
+  los grados de libertad fraccionarios de Welch se redondean hacia abajo, criterio conservador).
+- **Solo se declara `IMPROVED` o `WORSENED` si el intervalo excluye el cero**; si lo incluye, `INCONCLUSIVE`.
+- Dos experimentos de control en las pruebas: el mismo escenario con las mismas semillas da todo `UNCHANGED`, y
+  con semillas distintas el tiempo de viaje sale `INCONCLUSIVE` (no inventa diferencias).
+
 ## Base de datos
 
 - El esquema lo controla **Flyway** (`app/src/main/resources/db/migration`). Hibernate solo valida
@@ -198,6 +235,8 @@ defecto solo las `COMPLETED`), para elegir qué comparar.
 | Migración | Contenido |
 |---|---|
 | `V1__users_and_projects.sql` | `users` (email único en minúsculas, estado) y `projects` (dueño, nombre, descripción, visibilidad, fechas) |
+| `V4__sessions_and_audit.sql` | `SPRING_SESSION` y `SPRING_SESSION_ATTRIBUTES` (esquema oficial de Spring Session 4.1.1) y `audit_events` |
+| `V3__run_batches.sql` | `run_batches` (escenario, dueño, tamaño 2..10, semilla base, duración) y `simulation_runs.batch_id` |
 | `V2__scenarios_and_runs.sql` | `scenarios` (definición JSONB), `simulation_runs` (estado, semilla, versión del motor, snapshots JSONB, resumen, error), `simulation_metrics`, `simulation_samples` (JSONB compacto) |
 
 Las columnas JSONB se mapean en JPA como `String` con `@JdbcTypeCode(SqlTypes.JSON)`; la conversión a objetos la
@@ -234,6 +273,11 @@ configurado.
 | `GET` | `/api/v1/runs/{id}/export.csv` | sesión | Descarga CSV de las métricas |
 | `GET` | `/api/v1/projects/{projectId}/runs?status=` | sesión | Ejecuciones del proyecto con nombre de escenario (por defecto `COMPLETED`) |
 | `POST` | `/api/v1/comparisons` | sesión | `{baseRunId, candidateRunId}` → comparación · 400 si son la misma · 404 si alguna es ajena · 409 si no terminó |
+| `POST` | `/api/v1/scenarios/{id}/batches` | sesión | **202** lote de N semillas (`size` 2..10) · 400 · 429 |
+| `GET` | `/api/v1/batches/{id}` | sesión | Estado, ejecuciones por semilla y resumen estadístico por métrica |
+| `POST` | `/api/v1/batches/{id}/cancel` | sesión | Cancela las pendientes y detiene la que está en curso · 409 si ya terminó |
+| `GET` | `/api/v1/projects/{projectId}/batches` | sesión | Lotes del proyecto con nombre de escenario |
+| `POST` | `/api/v1/comparisons/batches` | sesión | `{baseBatchId, candidateBatchId}` → comparación estadística · 409 si algún lote tiene menos de 2 ejecuciones completadas |
 
 Formato de página: `{content, page, size, totalElements, totalPages}`.
 
@@ -243,15 +287,24 @@ por defecto del motor.
 
 ## Pruebas
 
-51 pruebas en `app/src/test`: 41 de integración y 10 unitarias de la lógica de comparación. Levantan la aplicación completa y un **PostgreSQL real** con
+80 pruebas en `app/src/test`: 56 de integración y 24 unitarias.
+
+Las pruebas con MockMvc (`ApiTestSupport`) usan la sesión del contenedor, porque MockMvc transporta la sesión
+como objeto y no como cookie, y elevan los límites por IP, ya que todas comparten `127.0.0.1`. Las sesiones de
+Spring Session, el protocolo CSRF real y las cabeceras se prueban con HTTP real en `RealHttpSecurityTest`. Levantan la aplicación completa y un **PostgreSQL real** con
 Testcontainers, así que requieren Docker en ejecución.
 
 | Prueba | Qué garantiza |
 |---|---|
-| `CsrfRealHttpTest` (2) | Protocolo CSRF con HTTP real: el valor de la cookie en la cabecera funciona; un token incorrecto da 403 (no 401) |
+| `RealHttpSecurityTest` (4) | HTTP real con Spring Session: protocolo CSRF; un token incorrecto da 403 (no 401); sesión guardada en PostgreSQL y borrada al cerrar sesión; cookie HttpOnly y SameSite; token CSRF renovado al iniciar sesión; cabeceras de seguridad |
+| `LoginThrottleTest` (6) | Ventana deslizante con reloj controlado: bloqueo por cuenta y por IP, desbloqueo exacto, limpieza tras un login correcto, registros por IP, purga |
+| `LoginThrottleApiTest` (4) | 5 fallos → 429 con `Retry-After` incluso con la contraseña correcta · otra cuenta no se ve afectada · un email inexistente se bloquea igual · auditoría completa sin email ni contraseña · retención |
+| `AutoSampleIntervalTest` (3) | Intervalo de muestreo automático según el tamaño de la red y la duración |
 | `AuthApiTest` (10) | Registro, login, me, logout · email duplicado sin importar mayúsculas · mismo mensaje con email inexistente o contraseña incorrecta · validación de contraseña · 403 sin CSRF · health sin detalles |
 | `ProjectApiTest` (6) | Ciclo completo de un proyecto · **otro usuario no puede ver, editar ni borrar** · 401 sin sesión · validaciones · ID mal formado sin filtrar detalles · paginación limitada |
 | `ScenarioApiTest` (7) | Crear, ver, reemplazar, borrar y duplicar · validar con el motor · estructura inválida → 400 · cuerpo > 2 MB → 413 · **IDOR en los 7 endpoints** |
+| `BatchApiTest` (8) | Lote de 5 semillas consecutivas con resumen · ampliar la calle mejora con el intervalo por debajo de 0 · **controles:** mismas semillas → todo sin cambios; semillas distintas → no concluyente · tamaño inválido · un lote = una tarea · cancelación · **IDOR** |
+| `BatchComparatorTest` (5) | Pareada frente a Welch · mejora significativa · no concluyente · sin cambios · no comparable y neutral |
 | `ComparisonLogicTest` (10) | Variación y evaluación de métricas, base 0, valores ausentes · diferencias entre escenarios (campos, altas, bajas, semáforos, giros; las posiciones se ignoran) · condiciones justas |
 | `ComparisonApiTest` (6) | **Experimento real:** calle saturada frente a calle ampliada con la misma semilla → comparación justa, mismos vehículos generados, viaje medio −75 % · semillas distintas → aviso · ejecuciones del proyecto · misma ejecución → 400 · **IDOR** (no se puede mezclar una ejecución propia con una ajena) |
 | `RunApiTest` (10) | Ejecución asíncrona con 30 s de viaje exactos · **misma semilla = mismas métricas** · editar el escenario no altera ejecuciones anteriores · errores del motor → 400 · límite de duración · semilla automática registrada · 429 por ejecuciones simultáneas · cancelación · CSV con protección contra fórmulas · **IDOR en ejecuciones y descargas** |

@@ -6,8 +6,10 @@ import java.time.Duration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
+@EnableScheduling // Retención de auditoría y limpieza del limitador de intentos.
 public class SimuCityApplication {
 
     public static void main(String[] args) {

@@ -37,6 +37,61 @@ public final class RunDtos {
         }
     }
 
+    // --- Lotes ---------------------------------------------------------------------------------------
+
+    /** Estado de un lote, derivado del de sus ejecuciones. */
+    public enum BatchStatus {
+        PENDING,
+        RUNNING,
+        COMPLETED,
+        /** Terminó, pero alguna ejecución falló o se canceló: las estadísticas usan solo las completadas. */
+        PARTIAL,
+        FAILED,
+        CANCELLED;
+
+        static BatchStatus of(List<RunStatus> statuses) {
+            if (statuses.contains(RunStatus.RUNNING)) {
+                return RUNNING;
+            }
+            if (statuses.contains(RunStatus.PENDING)) {
+                return statuses.stream().allMatch(s -> s == RunStatus.PENDING) ? PENDING : RUNNING;
+            }
+            if (statuses.stream().allMatch(s -> s == RunStatus.COMPLETED)) {
+                return COMPLETED;
+            }
+            if (statuses.stream().allMatch(s -> s == RunStatus.CANCELLED)) {
+                return CANCELLED;
+            }
+            return statuses.contains(RunStatus.COMPLETED) ? PARTIAL : FAILED;
+        }
+    }
+
+    public record BatchRunItem(UUID id, long seed, RunStatus status) {
+    }
+
+    /** Resumen de una métrica de red sobre las ejecuciones completadas del lote. */
+    public record MetricSummary(String name, String unit, int n, Double mean, Double standardDeviation, Double min,
+            Double max) {
+    }
+
+    public record BatchResponse(
+            UUID id,
+            UUID scenarioId,
+            BatchStatus status,
+            int size,
+            long baseSeed,
+            double durationSeconds,
+            String engineVersion,
+            Instant createdAt,
+            List<BatchRunItem> runs,
+            int completedRuns,
+            List<MetricSummary> summary) {
+    }
+
+    public record BatchListItem(UUID id, UUID scenarioId, String scenarioName, BatchStatus status, int size,
+            long baseSeed, double durationSeconds, Instant createdAt) {
+    }
+
     /** Ejecución dentro del listado de un proyecto (para elegir qué comparar). */
     public record ProjectRunItem(UUID id, UUID scenarioId, String scenarioName, RunStatus status, long seed,
             double durationSeconds, String engineVersion, Instant createdAt, Instant finishedAt) {

@@ -113,6 +113,15 @@ class AuthApiTest extends ApiTestSupport {
     }
 
     @Test
+    void cookieDeSesionSeguraPorDefecto(@org.springframework.beans.factory.annotation.Autowired
+            org.springframework.core.env.Environment env) {
+        org.assertj.core.api.Assertions.assertThat(env.getProperty("server.servlet.session.cookie.secure"))
+                .isEqualTo("true");
+        org.assertj.core.api.Assertions.assertThat(env.getProperty("server.servlet.session.cookie.http-only"))
+                .isEqualTo("true");
+    }
+
+    @Test
     void healthCheck_esPublicoYNoDaDetalles() throws Exception {
         mvc.perform(get("/actuator/health"))
                 .andExpect(status().isOk())

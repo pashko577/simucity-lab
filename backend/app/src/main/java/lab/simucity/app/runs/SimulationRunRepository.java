@@ -24,6 +24,13 @@ interface SimulationRunRepository extends JpaRepository<SimulationRunRecord, UUI
 
     long countByOwnerIdAndStatusIn(UUID ownerId, Collection<RunStatus> statuses);
 
+    /** Tareas activas: cada ejecución individual cuenta como una, y cada lote (con sus N ejecuciones) como una. */
+    @Query("select count(distinct coalesce(r.batchId, r.id)) from SimulationRunRecord r "
+            + "where r.ownerId = :ownerId and r.status in :statuses")
+    long countActiveTasks(UUID ownerId, Collection<RunStatus> statuses);
+
+    java.util.List<SimulationRunRecord> findByBatchIdOrderBySeed(UUID batchId);
+
     Page<SimulationRunRecord> findByOwnerIdAndScenarioIdInAndStatusIn(UUID ownerId, Collection<UUID> scenarioIds,
             Collection<RunStatus> statuses, Pageable pageable);
 
