@@ -37,6 +37,11 @@ public final class RunDtos {
         }
     }
 
+    /** Ejecución dentro del listado de un proyecto (para elegir qué comparar). */
+    public record ProjectRunItem(UUID id, UUID scenarioId, String scenarioName, RunStatus status, long seed,
+            double durationSeconds, String engineVersion, Instant createdAt, Instant finishedAt) {
+    }
+
     /**
      * Estado completo de una ejecución. {@code networkMetrics}, {@code anomalies} y {@code warnings} solo se
      * rellenan cuando terminó con éxito.

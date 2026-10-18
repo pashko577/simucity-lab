@@ -25,6 +25,23 @@ public final class MetricNames {
 
     public static final int MIN_OBSERVATIONS_P95 = 20;
 
+    /** Cómo interpretar una variación al comparar escenarios. */
+    public enum Direction {
+        LOWER_IS_BETTER,
+        HIGHER_IS_BETTER,
+        /** Descriptiva: subir o bajar no es en sí mejor ni peor (p. ej. vehículos generados). */
+        NEUTRAL
+    }
+
+    public static Direction direction(String metricName) {
+        return switch (metricName) {
+            case TRAVEL_TIME_MEAN, TRAVEL_TIME_P95, WAIT_TIME_MEAN, QUEUE_MEAN, QUEUE_MAX, TRIPS_INCOMPLETE ->
+                    Direction.LOWER_IS_BETTER;
+            case TRIPS_COMPLETED, THROUGHPUT -> Direction.HIGHER_IS_BETTER;
+            default -> Direction.NEUTRAL;
+        };
+    }
+
     private MetricNames() {
     }
 }

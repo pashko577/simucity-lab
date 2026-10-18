@@ -1,9 +1,11 @@
 import { api } from './client';
 import type {
+  ComparisonResult,
   Metric,
   MetricScope,
   Page,
   Project,
+  ProjectRunItem,
   Run,
   RunListItem,
   RunParametersRequest,
@@ -51,4 +53,11 @@ export const runsApi = {
     api.get<Metric[]>(`/runs/${id}/metrics${scope ? `?scope=${scope}` : ''}`),
   samples: (id: string) => api.get<SamplesPayload>(`/runs/${id}/samples`),
   csvUrl: (id: string) => `/api/v1/runs/${id}/export.csv`,
+  /** Ejecuciones terminadas de todo el proyecto, las más recientes primero. */
+  listInProject: (projectId: string) => api.get<Page<ProjectRunItem>>(`/projects/${projectId}/runs?size=100`),
+};
+
+export const comparisonsApi = {
+  compare: (baseRunId: string, candidateRunId: string) =>
+    api.post<ComparisonResult>('/comparisons', { baseRunId, candidateRunId }),
 };

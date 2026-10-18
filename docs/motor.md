@@ -45,6 +45,12 @@ ValidationResult validation = engine.validate(scenario, params);
 
 Unidades internas del sistema internacional: metros, segundos, m/s.
 
+**Carriles frente a espacio:** el flujo máximo de una calle lo limita tanto la descarga (`carriles × saturación`)
+como el almacenamiento (`capacidad / tiempo de recorrido`). Duplicar los carriles sin duplicar la capacidad
+apenas cambia el resultado: una calle de 200 m con 10 vehículos de capacidad sigue limitada a 10 veh / 20 s. Es
+correcto según el modelo; por eso el editor escala la capacidad al cambiar los carriles (lo detectó la prueba
+de comparación, que al principio mostraba solo −0,9 %).
+
 ## Ciclo de cada tick
 
 | # | Fase | Qué hace |
@@ -116,6 +122,10 @@ la animación, las anomalías y las advertencias de validación.
 | `vehicles_discharged` | calle | veh | Vehículos que salieron de la calle |
 | `utilization` | calle | ratio | Descargados / capacidad de descarga en la duración |
 
+`MetricNames.direction(nombre)` indica cómo interpretar una variación al comparar: `LOWER_IS_BETTER` (tiempos,
+colas, viajes sin terminar), `HIGHER_IS_BETTER` (viajes completados, flujo) o `NEUTRAL` (descriptivas, como los
+vehículos generados).
+
 Una métrica sin observaciones suficientes tiene valor `null` ("no aplica"). Cada métrica indica cuántas
 observaciones se usaron.
 
@@ -133,6 +143,6 @@ umbral (300 s por defecto). Una cola larga que avanza no es una anomalía: es un
 
 ## Pruebas
 
-52 pruebas en `backend/engine/src/test`, entre ellas todas las mínimas de la sección 16.1 de la
+57 pruebas en `backend/engine/src/test`, entre ellas todas las mínimas de la sección 16.1 de la
 especificación. Valores clave verificados a mano: 30 s de viaje en vía libre, 10,5 s de espera exacta ante un
 semáforo en rojo, y que la capacidad nunca se supera en ningún tick.

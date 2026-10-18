@@ -23,4 +23,12 @@ interface SavedScenarioRepository extends JpaRepository<SavedScenario, UUID> {
     interface ProjectIdOnly {
         UUID getProjectId();
     }
+
+    java.util.List<IdAndName> findByProjectIdOrderByName(UUID projectId);
+
+    interface IdAndName {
+        UUID getId();
+
+        String getName();
+    }
 }

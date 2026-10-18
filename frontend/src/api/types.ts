@@ -172,6 +172,76 @@ export interface RunListItem {
   finishedAt: string | null;
 }
 
+export interface ProjectRunItem {
+  id: string;
+  scenarioId: string;
+  scenarioName: string;
+  status: RunStatus;
+  seed: number;
+  durationSeconds: number;
+  engineVersion: string;
+  createdAt: string;
+  finishedAt: string | null;
+}
+
+// --- Comparación (sección 9) ---
+
+export type Assessment = 'IMPROVED' | 'WORSENED' | 'UNCHANGED' | 'NEUTRAL' | 'NOT_COMPARABLE';
+export type ElementType = 'NODE' | 'EDGE' | 'DEMAND' | 'SIGNAL' | 'TURN';
+export type ChangeKind = 'ADDED' | 'REMOVED' | 'MODIFIED';
+
+export interface RunRef {
+  id: string;
+  scenarioId: string;
+  scenarioName: string;
+  seed: number;
+  engineVersion: string;
+  durationSeconds: number;
+}
+
+export interface Condition {
+  code: string;
+  label: string;
+  equal: boolean;
+  baseValue: string;
+  candidateValue: string;
+}
+
+export interface FieldChange {
+  field: string;
+  before: unknown;
+  after: unknown;
+}
+
+export interface ScenarioChange {
+  elementType: ElementType;
+  elementId: string;
+  kind: ChangeKind;
+  fields: FieldChange[];
+}
+
+export interface MetricComparison {
+  name: string;
+  scope: MetricScope;
+  scopeId: string | null;
+  unit: string;
+  base: number | null;
+  candidate: number | null;
+  difference: number | null;
+  percentChange: number | null;
+  assessment: Assessment;
+}
+
+export interface ComparisonResult {
+  base: RunRef;
+  candidate: RunRef;
+  fair: boolean;
+  conditions: Condition[];
+  changes: ScenarioChange[];
+  network: MetricComparison[];
+  segments: MetricComparison[];
+}
+
 /** Muestras compactas: los arreglos siguen el orden de edgeIds. */
 export interface SamplesPayload {
   edgeIds: string[];

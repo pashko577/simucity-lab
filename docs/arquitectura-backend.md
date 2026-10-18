@@ -36,7 +36,7 @@ Un solo despliegue, con límites internos claros por paquete (sección 10.7 de l
 | `simulation` | ✅ | Integración del motor en Spring: límites del servidor y pool de hilos |
 | `scenarios` | ✅ | Red, demanda y semáforos (JSONB); duplicar; validar con el motor |
 | `runs` | ✅ | Ejecuciones asíncronas, cancelación, métricas, muestras y exportación CSV |
-| `comparison` | ⏳ | Comparar ejecuciones (Fase 5) |
+| `comparison` | ✅ | Comparar dos ejecuciones: condiciones justas, diferencias de escenario y de métricas |
 | `audit` | ⏳ | Registro de eventos de seguridad (Fase 6) |
 
 Reglas entre módulos:
@@ -169,6 +169,23 @@ leerlos.
 - Las credenciales de la base de datos llegan por variables de entorno (`SIMUCITY_DB_URL`, `SIMUCITY_DB_USER`,
   `SIMUCITY_DB_PASSWORD`). Las de `application-dev.yml` son solo para desarrollo local.
 
+## Comparación (Fase 5)
+
+`POST /api/v1/comparisons {baseRunId, candidateRunId}` compara dos ejecuciones terminadas del usuario. Se calcula
+al vuelo a partir de los snapshots y métricas guardados; no se persiste nada.
+
+| Parte | Clase (pura, sin Spring) | Qué hace |
+|---|---|---|
+| Condiciones justas (sección 9.2) | `FairnessCheck` | Compara versión del motor, semilla, demanda, duración, paso temporal y flujo de saturación. `fair = true` solo si todo coincide; si no, lista qué difiere |
+| Qué cambió (sección 5.3) | `ScenarioDiff` | Diferencias entre los dos snapshots por ID: nodos, calles (campo a campo), demandas, semáforos y giros prohibidos. Las posiciones de los nodos se ignoran (solo son visuales) |
+| Variación de métricas (sección 9.3) | `MetricComparator` | Para cada métrica presente en ambas: diferencia absoluta, porcentaje `(B − A) / A × 100` (`null` si A = 0) y evaluación según `MetricNames.direction` del motor |
+
+Evaluaciones: `IMPROVED`, `WORSENED`, `UNCHANGED`, `NEUTRAL` (métrica descriptiva, como los vehículos generados)
+y `NOT_COMPARABLE` (falta el valor, como un percentil 95 sin observaciones suficientes).
+
+`GET /api/v1/projects/{id}/runs` lista las ejecuciones de todo el proyecto con el nombre de su escenario (por
+defecto solo las `COMPLETED`), para elegir qué comparar.
+
 ## Base de datos
 
 - El esquema lo controla **Flyway** (`app/src/main/resources/db/migration`). Hibernate solo valida
@@ -215,6 +232,8 @@ configurado.
 | `GET` | `/api/v1/runs/{id}/metrics?scope=` | sesión | Todas las métricas (filtro opcional `NETWORK`, `SEGMENT`, `ENTRY`) · 409 si no terminó |
 | `GET` | `/api/v1/runs/{id}/samples` | sesión | Muestras compactas para la animación |
 | `GET` | `/api/v1/runs/{id}/export.csv` | sesión | Descarga CSV de las métricas |
+| `GET` | `/api/v1/projects/{projectId}/runs?status=` | sesión | Ejecuciones del proyecto con nombre de escenario (por defecto `COMPLETED`) |
+| `POST` | `/api/v1/comparisons` | sesión | `{baseRunId, candidateRunId}` → comparación · 400 si son la misma · 404 si alguna es ajena · 409 si no terminó |
 
 Formato de página: `{content, page, size, totalElements, totalPages}`.
 
@@ -224,7 +243,7 @@ por defecto del motor.
 
 ## Pruebas
 
-35 pruebas de integración en `app/src/test`. Levantan la aplicación completa y un **PostgreSQL real** con
+51 pruebas en `app/src/test`: 41 de integración y 10 unitarias de la lógica de comparación. Levantan la aplicación completa y un **PostgreSQL real** con
 Testcontainers, así que requieren Docker en ejecución.
 
 | Prueba | Qué garantiza |
@@ -233,6 +252,8 @@ Testcontainers, así que requieren Docker en ejecución.
 | `AuthApiTest` (10) | Registro, login, me, logout · email duplicado sin importar mayúsculas · mismo mensaje con email inexistente o contraseña incorrecta · validación de contraseña · 403 sin CSRF · health sin detalles |
 | `ProjectApiTest` (6) | Ciclo completo de un proyecto · **otro usuario no puede ver, editar ni borrar** · 401 sin sesión · validaciones · ID mal formado sin filtrar detalles · paginación limitada |
 | `ScenarioApiTest` (7) | Crear, ver, reemplazar, borrar y duplicar · validar con el motor · estructura inválida → 400 · cuerpo > 2 MB → 413 · **IDOR en los 7 endpoints** |
+| `ComparisonLogicTest` (10) | Variación y evaluación de métricas, base 0, valores ausentes · diferencias entre escenarios (campos, altas, bajas, semáforos, giros; las posiciones se ignoran) · condiciones justas |
+| `ComparisonApiTest` (6) | **Experimento real:** calle saturada frente a calle ampliada con la misma semilla → comparación justa, mismos vehículos generados, viaje medio −75 % · semillas distintas → aviso · ejecuciones del proyecto · misma ejecución → 400 · **IDOR** (no se puede mezclar una ejecución propia con una ajena) |
 | `RunApiTest` (10) | Ejecución asíncrona con 30 s de viaje exactos · **misma semilla = mismas métricas** · editar el escenario no altera ejecuciones anteriores · errores del motor → 400 · límite de duración · semilla automática registrada · 429 por ejecuciones simultáneas · cancelación · CSV con protección contra fórmulas · **IDOR en ejecuciones y descargas** |
 
 Verificado además a mano contra la aplicación en ejecución (perfil `dev` + Docker):

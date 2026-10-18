@@ -131,7 +131,26 @@ fecha; no se borra.
 - **Solución:** interpolar entre muestras o pedir muestras más frecuentes en ejecuciones cortas.
 
 ### F5. Comparación de ejecuciones no disponible en la interfaz
-- **Estado:** abierta. Es la Fase 5.
+- **Estado:** ✅ resuelta el 2026-10-18 (Fase 5, comparador de dos ejecuciones).
+
+## Comparación
+
+### C1. Una sola semilla por lado
+- **Estado:** abierta. Es el siguiente paso de la Fase 5.
+- **Qué pasa:** se compara una ejecución contra otra. Con llegadas aleatorias, una diferencia pequeña puede
+  deberse al azar de esa semilla. La interfaz lo advierte, pero no lo cuantifica.
+- **Solución (sección 9.2 y 20.4):** lotes de N semillas por escenario (por ejemplo, 5 a 10), con promedio,
+  dispersión e intervalo de confianza por métrica. Requiere revisar el límite de 2 ejecuciones simultáneas por
+  usuario: un lote debería contar como una sola tarea.
+
+### C2. Sin animación lado a lado
+- **Estado:** abierta, menor.
+- **Qué pasa:** el comparador muestra números y gráficos, pero no las dos animaciones sincronizadas.
+
+### C3. Las métricas de calles eliminadas o nuevas no se comparan
+- **Estado:** abierta, por diseño.
+- **Qué pasa:** solo se comparan las calles presentes en ambos escenarios (mismo ID). Si B añade una calle, sus
+  métricas no aparecen en la tabla de calles; el cambio sí aparece en "Qué cambió".
 
 ### B5. Las pruebas de la app necesitan Docker
 - **Estado:** abierta, decisión de diseño.

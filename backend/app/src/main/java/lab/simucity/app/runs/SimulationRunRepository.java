@@ -24,6 +24,9 @@ interface SimulationRunRepository extends JpaRepository<SimulationRunRecord, UUI
 
     long countByOwnerIdAndStatusIn(UUID ownerId, Collection<RunStatus> statuses);
 
+    Page<SimulationRunRecord> findByOwnerIdAndScenarioIdInAndStatusIn(UUID ownerId, Collection<UUID> scenarioIds,
+            Collection<RunStatus> statuses, Pageable pageable);
+
     /** PENDING → RUNNING. Devuelve 0 si otro proceso cambió el estado antes (p. ej. se canceló). */
     @Transactional
     @Modifying(clearAutomatically = true)

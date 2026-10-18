@@ -52,7 +52,10 @@ export function ProjectPage() {
         <h1>{project?.name ?? '…'}</h1>
         {project?.description && <p className="muted">{project.description}</p>}
 
-        <h2>Escenarios</h2>
+        <div className="panel-title">
+          <h2>Escenarios</h2>
+          <Link className="button-link" to={`/projects/${projectId}/compare`}>Comparar ejecuciones</Link>
+        </div>
         <form className="inline-form" onSubmit={create}>
           <input aria-label="Nombre del escenario" placeholder="Nombre del nuevo escenario" required maxLength={120}
             value={name} onChange={(e) => setName(e.target.value)} />

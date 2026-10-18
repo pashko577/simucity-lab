@@ -142,6 +142,20 @@ export function updateEdge(def: ScenarioDefinition, edgeId: string, changes: Par
   return { ...def, edges: def.edges.map((e) => (e.id === edgeId ? { ...e, ...changes } : e)) };
 }
 
+/**
+ * Cambia los carriles y escala la capacidad en la misma proporción: más carriles también son más espacio.
+ * Sin esto, ampliar una calle apenas cambiaría el resultado (el almacenamiento seguiría limitando el flujo)
+ * y el experimento sería engañoso. La capacidad sigue siendo editable a mano después.
+ */
+export function setLanes(def: ScenarioDefinition, edgeId: string, lanes: number): ScenarioDefinition {
+  const edge = def.edges.find((e) => e.id === edgeId);
+  if (!edge || lanes === edge.lanes) {
+    return def;
+  }
+  const storageCapacity = Math.max(1, Math.round((edge.storageCapacity * lanes) / edge.lanes));
+  return updateEdge(def, edgeId, { lanes, storageCapacity });
+}
+
 export function removeEdge(def: ScenarioDefinition, edgeId: string): ScenarioDefinition {
   const edge = def.edges.find((e) => e.id === edgeId);
   if (!edge) {

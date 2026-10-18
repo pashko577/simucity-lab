@@ -105,7 +105,7 @@ function EdgeProperties({ edge }: { edge: EdgeDef }) {
         <NumberField label="Longitud" unit="m" min={1} value={edge.lengthMeters}
           onCommit={(v) => update({ lengthMeters: v })} />
         <NumberField label="Carriles" integer min={1} max={8} value={edge.lanes}
-          onCommit={(v) => update({ lanes: v })} />
+          onCommit={(v) => apply((d) => model.setLanes(d, edge.id, v))} />
       </div>
       <div className="field-row">
         <NumberField label="Velocidad" unit="km/h" min={1} max={150} value={model.mpsToKmh(edge.speedLimitMps)}
@@ -139,8 +139,8 @@ function EdgeProperties({ edge }: { edge: EdgeDef }) {
         )}
       </div>
       <p className="muted small">
-        La capacidad es cuántos vehículos caben en la calle; por defecto, uno cada 7 m por carril. Son valores
-        pedagógicos, no mediciones reales.
+        La capacidad es cuántos vehículos caben en la calle; por defecto, uno cada 7 m por carril, y se ajusta
+        en proporción al cambiar los carriles. Son valores pedagógicos, no mediciones reales.
       </p>
     </section>
   );

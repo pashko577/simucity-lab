@@ -23,6 +23,7 @@
 | `/projects` | Mis proyectos: crear, abrir, eliminar |
 | `/projects/:id` | Escenarios del proyecto: crear, abrir, duplicar, eliminar |
 | `/scenarios/:id` | **Editor**: lienzo, herramientas, propiedades, demanda, validación, ejecución y animación |
+| `/projects/:id/compare?base=…&candidate=…` | **Comparador** de dos ejecuciones (A = base, B = alternativa) |
 
 El editor se carga en diferido (`React.lazy`): React Flow solo se descarga al abrir un escenario.
 
@@ -73,6 +74,35 @@ si se cierra la pestaña con cambios sin guardar.
 - **Encuadre:** el zoom automático solo se aplica al abrir un escenario con contenido. Con uno vacío, React
   Flow encuadraría al crear el primer nodo y los clics siguientes caerían en otro sitio (error encontrado con
   la prueba E2E).
+
+## Comparador (Fase 5)
+
+Se llega desde **"Comparar ejecuciones"** en la página del proyecto, o desde **"Comparar con otra ejecución"** en
+el panel de ejecución del editor (con A ya elegida). La selección vive en la URL, así que se puede recargar o
+compartir.
+
+Flujo típico de un experimento: duplicar el escenario → cambiar una cosa → ejecutar ambos **con la misma
+semilla** → comparar.
+
+| Sección | Contenido |
+|---|---|
+| Condiciones | ✓ comparación justa, o ⚠ con la lista de lo que difiere (semilla, demanda, duración…) |
+| Qué cambió de A a B | Frases legibles con unidades del editor: "Calle e1: carriles: 1 → 2; capacidad: 10 veh → 20 veh" |
+| Métricas clave | Un pequeño gráfico de barras por métrica (tiempo de viaje, espera, cola, viajes completados) |
+| Todas las métricas | Tabla con A, B, diferencia, variación % y evaluación |
+| Calles más afectadas | Las 10 calles con mayor cambio de cola media, con cola máxima y utilización |
+
+**Gráficos** (según la skill de visualización de datos):
+- Un gráfico por métrica, nunca dos ejes: cada métrica tiene su unidad y su escala.
+- A en azul y B en naranja. Ambos colores fueron validados con `validate_palette` contra las superficies clara y
+  oscura de la app: pasan las pruebas de daltonismo, de visión normal y de contraste.
+- La identidad nunca depende solo del color: cada barra lleva su rótulo "A" o "B" y hay leyenda.
+- Barras de como máximo 24 px, extremo redondeado de 4 px y valor en la punta, en color de texto.
+- Mejora y empeoramiento usan colores de **estado** reservados (verde y rojo), siempre con icono y texto
+  ("▲ Mejora", "▼ Empeora"), nunca solo color. La tabla es la vista accesible de los mismos datos.
+
+**Editor:** cambiar los carriles de una calle escala su capacidad en proporción (`setLanes`). Sin eso, "ampliar
+una calle" apenas cambiaba el resultado, porque el espacio seguía limitando el flujo (ver `docs/motor.md`).
 
 ## Animación
 
@@ -125,6 +155,8 @@ npm run e2e          # prueba E2E: levanta backend y Vite si no están en marcha
 | `editor/store.test.ts` (5) | Herramientas: crear nodos, conectar en uno o dos sentidos encadenando, borrar |
 | `editor/PropertiesPanel.test.tsx` (4) | km/h ↔ m/s · valor inválido no se guarda · sentido contrario · semáforo sin calles |
 | `playback/samples.test.ts` (7) | Elegir la muestra por tiempo · posición de vehículos en cola · colores · reloj |
+| `comparison/format.test.ts` (6) | Porcentajes y diferencias en español · evaluación con icono y texto · descripción de cambios con km/h · calles ordenadas por impacto |
+| `e2e/comparacion.spec.ts` (1) | **Navegador real:** calle saturada frente a calle ampliada → comparación justa, cambios descritos, "Mejora" en el tiempo de viaje; al intercambiar A y B, "Empeora" |
 | `e2e/flujo-completo.spec.ts` (1) | **Navegador real:** crear cuenta → proyecto → escenario → dibujar un cruce → semáforo → demanda → validar → ejecutar → métricas y CSV → animación con línea de tiempo → recargar y comprobar que se guardó |
 
 ### Errores reales encontrados por las pruebas

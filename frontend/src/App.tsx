@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router';
 
+import { ComparePage } from './pages/ComparePage';
 import { LoginPage } from './pages/LoginPage';
 import { ProjectPage } from './pages/ProjectPage';
 import { ProjectsPage } from './pages/ProjectsPage';
@@ -16,6 +17,7 @@ const router = createBrowserRouter([
     children: [
       { path: '/projects', element: <ProjectsPage /> },
       { path: '/projects/:projectId', element: <ProjectPage /> },
+      { path: '/projects/:projectId/compare', element: <ComparePage /> },
       {
         path: '/scenarios/:scenarioId',
         element: (

@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 import lab.simucity.app.identity.AppUserPrincipal;
 import lab.simucity.app.runs.RunDtos.MetricDto;
+import lab.simucity.app.runs.RunDtos.ProjectRunItem;
 import lab.simucity.app.runs.RunDtos.RunListItem;
 import lab.simucity.app.runs.RunDtos.RunResponse;
 import lab.simucity.app.scenarios.ScenarioDtos.RunParametersRequest;
@@ -59,6 +60,15 @@ class RunController {
             @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
         return PageResponse.of(service.list(user.id(), scenarioId, pageRequests.of(page, size, NEWEST_FIRST)),
                 RunListItem::from);
+    }
+
+    /** Para el comparador: por defecto solo las terminadas con éxito, que son las comparables. */
+    @GetMapping("/projects/{projectId}/runs")
+    PageResponse<ProjectRunItem> listInProject(@AuthenticationPrincipal AppUserPrincipal user,
+            @PathVariable UUID projectId, @RequestParam(defaultValue = "COMPLETED") List<RunStatus> status,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "50") int size) {
+        return PageResponse.of(service.listInProject(user.id(), projectId, status,
+                pageRequests.of(page, size, NEWEST_FIRST)), r -> r);
     }
 
     @GetMapping("/runs/{id}")

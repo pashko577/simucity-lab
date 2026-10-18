@@ -140,6 +140,10 @@ public class SimulationRunRecord {
         return seed;
     }
 
+    public double getDurationSeconds() {
+        return duration;
+    }
+
     public String getParametersSnapshot() {
         return parametersSnapshot;
     }

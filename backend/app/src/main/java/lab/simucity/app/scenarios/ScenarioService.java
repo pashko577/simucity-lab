@@ -104,6 +104,15 @@ public class ScenarioService {
                         p.saturationFlowPerLaneVph(), p.stallThresholdSeconds()));
     }
 
+    /** Nombres de los escenarios de un proyecto autorizado, por ID. */
+    @Transactional(readOnly = true)
+    public java.util.Map<UUID, String> namesInProject(UUID ownerId, UUID projectId) {
+        projects.getOwned(ownerId, projectId);
+        java.util.Map<UUID, String> names = new java.util.LinkedHashMap<>();
+        scenarios.findByProjectIdOrderByName(projectId).forEach(s -> names.put(s.getId(), s.getName()));
+        return names;
+    }
+
     public ScenarioDefinition definitionOf(SavedScenario scenario) {
         return codec.read(scenario.getDefinitionJson());
     }

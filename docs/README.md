@@ -7,7 +7,7 @@ Documentación técnica de lo que está construido. La visión y los requisitos 
 |---|---|
 | [motor.md](motor.md) | Motor de simulación: modelo, ciclo por ticks, determinismo, rutas, semáforos, métricas |
 | [arquitectura-backend.md](arquitectura-backend.md) | Aplicación Spring Boot: módulos, seguridad, base de datos, API |
-| [frontend.md](frontend.md) | Editor web: pantallas, React Flow, animación, cliente de la API, pruebas |
+| [frontend.md](frontend.md) | Editor web: pantallas, React Flow, animación, comparador, cliente de la API, pruebas |
 | [limitaciones.md](limitaciones.md) | Limitaciones conocidas y decisiones pendientes |
 
 ## Estado por fase
@@ -18,7 +18,7 @@ Documentación técnica de lo que está construido. La visión y los requisitos 
 | 2. Motor independiente | ✅ Completa (motor v0.2.0, 54 pruebas) |
 | 3. Editor web | ✅ Editor 2D con React Flow: dibujar la red, semáforos, giros, demanda, validar (43 pruebas + E2E) |
 | 4. Ejecución y resultados | ✅ Ejecuciones asíncronas, métricas explicadas, CSV y animación 2D sobre el lienzo (35 pruebas de API) |
-| 5. Comparación | Pendiente. Ya existen la duplicación de escenarios, los snapshots y las semillas |
+| 5. Comparación | ✅ Comparador de 2 ejecuciones: condiciones de comparación justa, qué cambió, variación de cada métrica, gráficos y calles más afectadas. Pendiente: varias semillas con promedio y dispersión (C1) |
 | Vista 3D | Pendiente, después de la Fase 5 (sección 17, prioridad 4). La animación ya usa la interfaz `RunRenderer` |
 | 6. Seguridad y despliegue | Parcial: autenticación, CSRF, autorización por recurso, límites de tamaño y de ejecución |
 

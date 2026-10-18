@@ -15,6 +15,7 @@ import {
   nextId,
   removeEdge,
   removeNode,
+  setLanes,
   setSignal,
   toFlowPosition,
   toggleProhibited,
@@ -79,6 +80,20 @@ describe('calles', () => {
 
     expect(addEdge(def, a, b)[1]).toBeNull();
     expect(addEdge(def, a, a)[1]).toBeNull();
+  });
+
+  it('cambiar los carriles escala la capacidad en proporción', () => {
+    let [def, a] = addNode(EMPTY_DEFINITION, 'ENTRY', 0, 0);
+    let b: string;
+    [def, b] = addNode(def, 'EXIT', 140, 0);
+    let edgeId: string | null;
+    [def, edgeId] = addEdge(def, a, b);
+    expect(def.edges[0]!.storageCapacity).toBe(20);
+
+    const doubled = setLanes(def, edgeId!, 2);
+    expect(doubled.edges[0]).toMatchObject({ lanes: 2, storageCapacity: 40 });
+    expect(setLanes(doubled, edgeId!, 1).edges[0]).toMatchObject({ lanes: 1, storageCapacity: 20 });
+    expect(setLanes(def, edgeId!, 1)).toBe(def); // sin cambios, misma referencia
   });
 
   it('el sentido contrario copia las propiedades', () => {

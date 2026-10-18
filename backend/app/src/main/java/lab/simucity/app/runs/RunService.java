@@ -1,7 +1,9 @@
 package lab.simucity.app.runs;
 
 import java.time.Clock;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -13,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import lab.simucity.app.runs.RunDispatcher.RunCreated;
 import lab.simucity.app.runs.RunDtos.MetricDto;
+import lab.simucity.app.runs.RunDtos.ProjectRunItem;
 import lab.simucity.app.runs.RunDtos.RunResponse;
 import lab.simucity.app.runs.RunDtos.RunSummary;
 import lab.simucity.app.scenarios.SavedScenario;
@@ -99,6 +102,20 @@ public class RunService {
     public Page<SimulationRunRecord> list(UUID ownerId, UUID scenarioId, Pageable pageable) {
         scenarios.getOwned(ownerId, scenarioId);
         return runs.findByScenarioIdAndOwnerId(scenarioId, ownerId, pageable);
+    }
+
+    /** Ejecuciones de todos los escenarios de un proyecto, con el nombre de su escenario. */
+    @Transactional(readOnly = true)
+    public Page<ProjectRunItem> listInProject(UUID ownerId, UUID projectId, Collection<RunStatus> statuses,
+            Pageable pageable) {
+        Map<UUID, String> names = scenarios.namesInProject(ownerId, projectId);
+        if (names.isEmpty()) {
+            return Page.empty(pageable);
+        }
+        return runs.findByOwnerIdAndScenarioIdInAndStatusIn(ownerId, names.keySet(), statuses, pageable)
+                .map(r -> new ProjectRunItem(r.getId(), r.getScenarioId(), names.get(r.getScenarioId()), r.getStatus(),
+                        r.getSeed(), r.getDurationSeconds(), r.getEngineVersion(), r.getCreatedAt(),
+                        r.getFinishedAt()));
     }
 
     /**

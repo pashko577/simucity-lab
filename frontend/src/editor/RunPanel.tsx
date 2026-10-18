@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router';
 
 import { ApiError } from '../api/client';
 import { runsApi } from '../api/endpoints';
@@ -13,6 +14,7 @@ const POLL_MS = 700;
 
 export function RunPanel() {
   const scenarioId = useEditor((s) => s.scenarioId);
+  const projectId = useEditor((s) => s.projectId);
   const { setIssues, setPlayback } = useEditor.getState();
   const save = useSaveScenario();
   const [durationMinutes, setDurationMinutes] = useState(15);
@@ -116,7 +118,12 @@ export function RunPanel() {
             </ul>
           )}
           {run.status === 'COMPLETED' && (
-            <p><a href={runsApi.csvUrl(run.id)} download>Descargar métricas (CSV)</a></p>
+            <p className="button-row">
+              <a href={runsApi.csvUrl(run.id)} download>Descargar métricas (CSV)</a>
+              {projectId && (
+                <Link to={`/projects/${projectId}/compare?base=${run.id}`}>Comparar con otra ejecución</Link>
+              )}
+            </p>
           )}
           <p className="muted small">
             Resultados exploratorios de un modelo simplificado: no predicen el tráfico real sin calibración.
